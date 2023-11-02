@@ -2,6 +2,7 @@ import express from "express";
 import bodyParser from "body-parser";
 import GenerateCodeRoute from "./src/routes/GenerateCodeRoute.js";
 import session from "express-session";
+import { auth } from "./src/middlewares/authjwt.js";
 import cors from "cors";
 
 const app = express();

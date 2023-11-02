@@ -1,8 +1,12 @@
 import express from "express";
-import { codeGenerate } from "../controllers/GenerateCodeController.js";
+import {
+    codeGenerate,
+    userAddNewDiscount,
+} from "../controllers/GenerateCodeController.js";
 
 const router = express.Router();
 
-router.get("/admin/generate", codeGenerate);
+router.post("/admin/generate", codeGenerate);
+router.post("/addnewdiscount", userAddNewDiscount);
 
 export default router;

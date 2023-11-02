@@ -28,7 +28,7 @@ model Newsletter {
 model AdminGenerateCode {
   id        Int      @id @default(autoincrement())
   user_id   Int
-  points    Int
+  value     Int
   redeemed  Boolean
   code      String   @unique
   createdAt DateTime @default(now())
