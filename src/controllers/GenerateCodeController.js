@@ -24,11 +24,6 @@ export const codeGenerate = async (req, res) => {
         }
     }
 
-    console.log(code);
-
-    console.log(createdAtCurrentTime);
-    console.log(expiresAt);
-
     const createDiscount = await prisma.adminGenerateCode.create({
         data: {
             redeemed: false,
@@ -61,85 +56,68 @@ export const userAddNewDiscount = async (req, res) => {
             `${process.env.SECRET_TOKEN_USER}`
         );
 
-        const userIdFromToken = decodedToken.userId.id; //token decodé
+        const userIdFromToken = decodedToken.userId.id;
 
         res.locals.userId = userIdFromToken;
 
         if (req.body.userId && req.body.userId !== userIdFromToken) {
             throw "Invalid user ID";
-        } else {
-            const user = await prisma.user.findUnique({
-                where: {
-                    id: userIdFromToken,
-                },
-                select: {
-                    id: true,
-                },
-            });
-
-            const getPoints = await prisma.adminGenerateCode.findUnique({
-                where: { code: getDiscountCode },
-            });
-
-            const userApply = await prisma.userPoint.create({
-                data: {
-                    User: { connect: { id: user.id } },
-                    points: getPoints.points,
-                    redeemed: false,
-                    code: getDiscountCode,
-                    createdAt: getPoints.createdAt,
-                    expiresAt: getPoints.expiresAt,
-                    points: getPoints.value,
-                },
-                select: {
-                    User: false,
-                    points: true,
-                    redeemed: true,
-                    code: true,
-                    createdAt: true,
-                    expiresAt: true,
-                },
-            });
-
-            res.status(201).json(userApply);
         }
-    } catch (e) {
-        res.status(403).json({
-            error: new Error("Invalid request!"),
+
+        const user = await prisma.user.findUnique({
+            where: {
+                id: userIdFromToken,
+            },
+            select: {
+                id: true,
+            },
         });
+
+        const getPoints = await prisma.adminGenerateCode.findUnique({
+            where: { code: getDiscountCode },
+        });
+
+        const getSumOfPoints = await prisma.userPoint.findMany({
+            where: {
+                user_id: user.id,
+            },
+            select: { points: true },
+            orderBy: {
+                points: "desc",
+            },
+            take: 1,
+        });
+
+        const userApply = await prisma.userPoint.create({
+            data: {
+                User: { connect: { id: user.id } },
+                redeemed: false,
+                code: getDiscountCode,
+                createdAt: getPoints.createdAt,
+                expiresAt: getPoints.expiresAt,
+                points: getPoints.value + getSumOfPoints[0].points,
+            },
+            select: {
+                User: false,
+                points: true,
+                redeemed: true,
+                code: true,
+                expiresAt: true,
+            },
+        });
+
+        if (userApply) {
+            await prisma.adminGenerateCode.update({
+                where: { code: getDiscountCode },
+                data: {
+                    redeemed: true,
+                },
+            });
+        }
+
+        res.status(201).json(userApply);
+    } catch (e) {
+        console.log(e);
+        res.status(403).send("Discount already used");
     }
 };
-
-// export const checkExpiredPoints = async () => {
-//     /*
-//      Todo :
-//       Il faut faire un système de vérification avec la table adminGenerateCode et userPoint afin de savoir :
-//         todo * - si le coupon est enregistré par l'utilisateur,
-//         todo * - si le coupon de l'utilisateur est bientôt expiré,
-//         todo * - si le coupon a déjà était utilisé côté admin,
-//         todo * - si ça validité est toujours bonne coté admin.
-//      */
-
-//     /*
-//       Todo :
-//     Pour la vérif, prendre la date du jour, prendre la date de creation et prendre la date d'expiration voir si on est dans les clous ou non
-//     todo * il faut aussi verifier si le code est renseigné chez un utilisateur si le code est renseigné chez un utilisateur, il faut le rendre  redeemed: true à true coté admin afin qu'il ne soit pas utilisé à nouveau.
-//     todo * Côté user il faut verifier si le code est toujours valable si plus valable : redeemed: true
-//      */
-
-//     const expiredPoints = await prisma.adminGenerateCode.findMany({
-//         where: {
-//             AND: [{ expiresAt: { lt: currentTime } }, { redeemed: false }],
-//         },
-//     });
-
-//     const discountUsed = await prisma.userPoint.findMany({
-//         where: {
-//             AND: [{ expiresAt: { lt: currentTime } }, { redeemed: false }],
-//         },
-//     });
-
-//     for (const point of expiredPoints) {
-//         console.log(`Point ${point.code} is expired and not redeemed.`);
-//     }
-// };
