@@ -91,11 +91,14 @@ export const userAddNewDiscount = async (req, res) => {
         const userApply = await prisma.userPoint.create({
             data: {
                 User: { connect: { id: user.id } },
-                redeemed: false,
+                redeemed: true,
                 code: getDiscountCode,
                 createdAt: getPoints.createdAt,
                 expiresAt: getPoints.expiresAt,
-                points: getPoints.value + getSumOfPoints[0].points,
+                points:
+                    getSumOfPoints[0]?.points !== undefined
+                        ? getPoints.value + getSumOfPoints[0]?.points
+                        : getPoints.value,
             },
             select: {
                 User: false,
